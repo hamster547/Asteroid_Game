@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include <raymath.h>
 #include "config.hpp"
+#include "window.hpp"
 #include "game.hpp"
 
 // class Asteroid {
@@ -251,23 +252,21 @@
 // };
 
 int main() {
-	InitWindow(config::SCREEN_WIDTH, config::SCREEN_HEIGHT, "asteroid game");
-	SetTargetFPS(config::targetFPS);
+	// also initiate a raylib window
+	Window window(config::SCREEN_WIDTH, config::SCREEN_HEIGHT, "Asteroids Game", 60);
 
 	Game game;
 
-	while (!WindowShouldClose()) {
+	while (!window.ShouldClose()) {
 		
 		game.Update();
 		
-		BeginDrawing();
-
-		ClearBackground(BLACK);
+		window.StartFrame();
 		game.Draw();
-
-		EndDrawing();
+		window.EndFrame();
 	}
+	
+	// window deconstructor will close the raylib window
 
-	CloseWindow();
 	return 0;
 }
