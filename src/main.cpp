@@ -1,8 +1,6 @@
 #include <raylib.h>
 #include <raymath.h>
-
-const int screenWidth = 800;
-const int screenHeight = 800;
+#include "config.hpp"
 
 class Asteroid {
 	public:
@@ -14,7 +12,7 @@ class Asteroid {
 
 	void Activate() {
 		radius = GetRandomValue(500, 1000) / 10.0f;
-		pos.x = GetRandomValue(radius, screenWidth - radius);
+		pos.x = GetRandomValue(radius, config::SCREEN_WIDTH - radius);
 		pos.y = -radius;
 
 		speed = GetRandomValue(9000, 12000) / 100.0f;
@@ -29,7 +27,7 @@ class Asteroid {
 	}
 
 	bool OnScreen() {
-		return !(pos.y - radius >= screenHeight);
+		return !(pos.y - radius >= config::SCREEN_HEIGHT);
 	}
 
 	void Update(float dt) {
@@ -63,7 +61,7 @@ class Bullet {
 	bool OnScreen() {
 		if (pos.y + height <= 0.0f) return false;
 		if (pos.x + width <= 0.0f) return false;
-		if (pos.x >= screenWidth) return false;
+		if (pos.x >= config::SCREEN_WIDTH) return false;
 		return true;
 	}
 
@@ -89,18 +87,18 @@ class Ship {
 	const float friction = 0.95f;
 
 	Ship() {
-		pos = { (screenWidth - size.x) / 2.0f, (screenHeight - size.y) / 2.0f };
+		pos = { (config::SCREEN_WIDTH - size.x) / 2.0f, (config::SCREEN_HEIGHT - size.y) / 2.0f };
 	}
 
 	void Update(float dt) {
 		// screen warp on x
 		// not equal or youll constantly jump on the edge
-		if (pos.x + (size.x / 2.0f) < 0.0f) pos.x = screenWidth - (size.x / 2.0f);
-		if (pos.x + (size.x / 2.0f) > screenWidth) pos.x = -size.x / 2.0f;
+		if (pos.x + (size.x / 2.0f) < 0.0f) pos.x = config::SCREEN_WIDTH - (size.x / 2.0f);
+		if (pos.x + (size.x / 2.0f) > config::SCREEN_WIDTH) pos.x = -size.x / 2.0f;
 
 		// block exiting the screen on y and bounce off
-		if (pos.y + size.y >= screenHeight) {
-			pos.y = screenHeight - size.y;
+		if (pos.y + size.y >= config::SCREEN_HEIGHT) {
+			pos.y = config::SCREEN_HEIGHT - size.y;
 			velocity.y *= -1.0f;
 		}
 		if (pos.y <= 0.0f) {
@@ -140,21 +138,21 @@ class Ship {
 		DrawRectangle(pos.x, pos.y, size.x, size.y, RED);
 		// the most simple way for a fun screen warp effect
 		// its only two rectangles so it doesnt really effect preformance
-		DrawRectangle(pos.x + screenWidth, pos.y, size.x, size.y, RED);
-		DrawRectangle(pos.x - screenWidth, pos.y, size.x, size.y, RED);
+		DrawRectangle(pos.x + config::SCREEN_WIDTH, pos.y, size.x, size.y, RED);
+		DrawRectangle(pos.x - config::SCREEN_WIDTH, pos.y, size.x, size.y, RED);
 	}
 };
 
 class Game {
 	public:
 	Ship ship;
-	Bullet bullets[50];
-	Asteroid asteroids[75];
+	Bullet bullets[config::MAX_BULLET_AMOUNT];
+	Asteroid asteroids[config::MAX_ASTEROID_AMOUNT];
 	float asteroidSpawnTimer = 0.0f;
 	bool gameOver = false;
 
 	int GetNextFreeBullet() {
-		for (int i = 0; i < 50; i++) {
+		for (int i = 0; i < config::MAX_BULLET_AMOUNT; i++) {
 			if (!bullets[i].isActive) return i;
 		}
 		// fallback: return the first bullet
@@ -162,7 +160,7 @@ class Game {
 	}
 
 	int GetNextFreeAstroid() {
-		for (int i = 0; i < 75; i++) {
+		for (int i = 0; i < config::MAX_ASTEROID_AMOUNT; i++) {
 			if (!asteroids[i].isActive) return i;
 		}
 		// fallback: return the first bullet
@@ -252,7 +250,7 @@ class Game {
 };
 
 int main() {
-	InitWindow(screenWidth, screenHeight, "asteroid game");
+	InitWindow(config::SCREEN_WIDTH, config::SCREEN_HEIGHT, "asteroid game");
 	SetTargetFPS(60);
 
 	Game game;
