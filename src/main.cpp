@@ -17,7 +17,7 @@ class Asteroid {
 		pos.x = GetRandomValue(radius, screenWidth - radius);
 		pos.y = -radius;
 
-		speed = GetRandomValue(150, 200) / 100.0f;
+		speed = GetRandomValue(9000, 12000) / 100.0f;
 		// randomize color
 		int colorVariant = GetRandomValue(-25, 25);
 		color = GRAY;
@@ -33,7 +33,7 @@ class Asteroid {
 	}
 
 	void Update(float dt) {
-		pos.y += speed;
+		pos.y += speed * dt;
 		isActive = OnScreen();
 	}
 
@@ -49,13 +49,13 @@ class Bullet {
 	Vector2 initVel; // y is just speed, but x can be effected by the ship's velocity
 	bool isActive = false;
 	// im not an expert but this should make it so every bullet doesnt spawn its own variables
-	static constexpr float speed = 10.0f;
+	static constexpr float speed = 600.0f;
 	static constexpr float width = 5.0f;
 	static constexpr float height = 10.0f;
 
 	void Activate(const Vector2 ShipPos, const float ShipVelX) {
 		pos = ShipPos;
-		initVel.x = speed * ShipVelX * 3.0f;
+		initVel.x = ShipVelX;
 		initVel.y = speed;
 		isActive = true;
 	}
@@ -67,9 +67,9 @@ class Bullet {
 		return true;
 	}
 
-	void Update() {
-		pos.x += initVel.x;
-		pos.y -= initVel.y;
+	void Update(float dt) {
+		pos.x += initVel.x * dt;
+		pos.y -= initVel.y * dt;
 		isActive = OnScreen();
 	}
 
@@ -84,8 +84,8 @@ class Ship {
 	Vector2 velocity = {0, 0};
 	const Vector2 size = {50, 50};
 	float shootCooldown = 0.0f;
-	const float acceleration = 0.5f; // make it a bit fun to steer
-	const float maxSpeed = 3.0f;
+	const float acceleration = 1800.0f;
+	const float maxSpeed = 10800.0f;
 	const float friction = 0.95f;
 
 	Ship() {
@@ -125,11 +125,13 @@ class Ship {
 		velocity.x = Clamp(velocity.x, -maxSpeed, maxSpeed);
 		velocity.y = Clamp(velocity.y, -maxSpeed, maxSpeed);
 
-		pos.x += velocity.x * 60.0f; // just to speed up after dt
-		pos.y += velocity.y * 60.0f;
+		pos.x += velocity.x * dt;// * 60.0f; // just to speed up after dt
+		pos.y += velocity.y * dt;// * 60.0f;
 
-		velocity.x *= friction;
-		velocity.y *= friction;
+
+		float dtFriction = std::pow(friction, 60.0f*dt);
+		velocity.x *= dtFriction;
+		velocity.y *= dtFriction;
 
 		if (shootCooldown > 0.0f) shootCooldown -= dt;
 	}
@@ -201,7 +203,7 @@ class Game {
 		
 			for (auto& bullet : bullets) {
 				if (bullet.isActive) {
-					bullet.Update();
+					bullet.Update(dt);
 				}
 			}
 			for (auto& asteroid : asteroids) {
