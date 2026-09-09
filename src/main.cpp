@@ -4,6 +4,44 @@
 const int screenWidth = 800;
 const int screenHeight = 800;
 
+class Asteroid {
+	public:
+	Vector2 pos = {0, 0};
+	float speed = 0;
+	float radius = 0;
+	bool isActive = false;
+	Color color = GRAY;
+
+	void Activate() {
+		radius = GetRandomValue(500, 1000) / 10.0f;
+		pos.x = GetRandomValue(radius, screenWidth - radius);
+		pos.y = -radius;
+
+		speed = GetRandomValue(150, 200) / 100.0f;
+		// randomize color
+		int colorVariant = GetRandomValue(-25, 25);
+		color = GRAY;
+		color.r += colorVariant;
+		color.g += colorVariant;
+		color.b += colorVariant;
+
+		isActive = true;
+	}
+
+	bool OnScreen() {
+		return !(pos.y - radius >= screenHeight);
+	}
+
+	void Update(float dt) {
+		pos.y += speed;
+		isActive = OnScreen();
+	}
+
+	void Draw() {
+		DrawCircle(pos.x, pos.y, radius, color);
+	}
+};
+
 // if we have 10k bullets i know itll be better to seperate pos, vel and isActive in seperate lists to make the cpu cache like me
 class Bullet {
 	public:
@@ -15,7 +53,7 @@ class Bullet {
 	static constexpr float width = 5.0f;
 	static constexpr float height = 10.0f;
 
-	void ActivateBullet(const Vector2 ShipPos, const float ShipVelX) {
+	void Activate(const Vector2 ShipPos, const float ShipVelX) {
 		pos = ShipPos;
 		initVel.x = speed * ShipVelX * 3.0f;
 		initVel.y = speed;
@@ -57,8 +95,8 @@ class Ship {
 	void Update(float dt) {
 		// screen warp on x
 		// not equal or youll constantly jump on the edge
-		if (pos.x< 0.0f) pos.x = screenWidth;
-		if (pos.x > screenWidth) pos.x = 0.0f;
+		if (pos.x + (size.x / 2.0f) < 0.0f) pos.x = screenWidth - (size.x / 2.0f);
+		if (pos.x + (size.x / 2.0f) > screenWidth) pos.x = -size.x / 2.0f;
 
 		// block exiting the screen on y and bounce off
 		if (pos.y + size.y >= screenHeight) {
@@ -109,39 +147,104 @@ class Game {
 	public:
 	Ship ship;
 	Bullet bullets[50];
+	Asteroid asteroids[75];
+	float asteroidSpawnTimer = 0.0f;
+	bool gameOver = false;
 
-	int GetFreeBullet() {
-		for (int i = 0; i < 100; i++) {
+	int GetNextFreeBullet() {
+		for (int i = 0; i < 50; i++) {
 			if (!bullets[i].isActive) return i;
 		}
 		// fallback: return the first bullet
 		return 0;
 	}
 
-	void Update() {
-		float dt = GetFrameTime();
-		ship.Update(dt);
-		
+	int GetNextFreeAstroid() {
+		for (int i = 0; i < 75; i++) {
+			if (!asteroids[i].isActive) return i;
+		}
+		// fallback: return the first bullet
+		return 0;
+	}
+
+	void CheckAsteroidCollision(Asteroid& asteroid) {
 		for (auto& bullet : bullets) {
 			if (bullet.isActive) {
-				bullet.Update();
+				Rectangle bulletHitbox = {
+					bullet.pos.x,
+					bullet.pos.y,
+					bullet.width,
+					bullet.height
+				};
+				if (CheckCollisionCircleRec(asteroid.pos, asteroid.radius, bulletHitbox)) {
+					bullet.isActive = false;
+					asteroid.isActive = false;
+					return;
+				}
 			}
 		}
+		Rectangle shipHitbox = {
+			ship.pos.x,
+			ship.pos.y,
+			ship.size.x,
+			ship.size.y,
+		};
+		if (CheckCollisionCircleRec(asteroid.pos, asteroid.radius, shipHitbox)) {
+			gameOver = true;
+		}
+	}
 
-		if (IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-			if (ship.shootCooldown <= 0.0f) {
-				bullets[GetFreeBullet()].ActivateBullet({ship.pos.x + ship.size.x / 2.0f, ship.pos.y - 10}, ship.velocity.x);
-				ship.shootCooldown = 0.15f;
+	void Update() {
+		if (!gameOver) {
+			float dt = GetFrameTime();
+			ship.Update(dt);
+		
+			for (auto& bullet : bullets) {
+				if (bullet.isActive) {
+					bullet.Update();
+				}
+			}
+			for (auto& asteroid : asteroids) {
+				if (asteroid.isActive) {
+					asteroid.Update(dt);
+					CheckAsteroidCollision(asteroid);
+				}
+			}
+
+			asteroidSpawnTimer -= dt;
+
+			if (IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+				if (ship.shootCooldown <= 0.0f) {
+					bullets[GetNextFreeBullet()].Activate({ship.pos.x + ship.size.x / 2.0f, ship.pos.y - 10}, ship.velocity.x);
+					ship.shootCooldown = 0.35f;
+				}
+			}
+			if (asteroidSpawnTimer <= 0.0f) {
+				for (int i = 0; i < 10; i++) {
+					asteroids[GetNextFreeAstroid()].Activate();
+				}
+				asteroidSpawnTimer = 1.5f;
 			}
 		}
 	}
 
 	void Draw() {
-		ship.Draw();
-		for (auto& bullet : bullets) {
-			if (bullet.isActive) {
-				bullet.Draw();
+		if (!gameOver) {
+			ship.Draw();
+			for (auto& bullet : bullets) {
+				if (bullet.isActive) {
+					bullet.Draw();
+				}
 			}
+			for (auto& asteroid : asteroids) {
+				if (asteroid.isActive) {
+					asteroid.Draw();
+				}
+			}
+		}
+		else {
+			// non centered but who cares...
+			DrawText("GAME OVER T^T", 50, 300, 75, WHITE);
 		}
 	}
 };
