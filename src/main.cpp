@@ -1,25 +1,63 @@
 #include <raylib.h>
 #include <raymath.h>
 
+const int screenWidth = 800;
+const int screenHeight = 800;
+
+// if we have 10k bullets i know itll be better to seperate pos, vel and isActive in seperate lists to make the cpu cache like me
+class Bullet {
+	public:
+	Vector2 pos;
+	Vector2 initVel; // y is just speed, but x can be effected by the ship's velocity
+	bool isActive = false;
+	// im not an expert but this should make it so every bullet doesnt spawn its own variables
+	static constexpr float speed = 10.0f;
+	static constexpr float width = 5.0f;
+	static constexpr float height = 10.0f;
+
+	void ActivateBullet(const Vector2 ShipPos, const float ShipVelX) {
+		pos = ShipPos;
+		initVel.x = speed * ShipVelX * 3.0f;
+		initVel.y = speed;
+		isActive = true;
+	}
+
+	bool OnScreen() {
+		if (pos.y + height <= 0.0f) return false;
+		if (pos.x + width <= 0.0f) return false;
+		if (pos.x >= screenWidth) return false;
+		return true;
+	}
+
+	void Update() {
+		pos.x += initVel.x;
+		pos.y -= initVel.y;
+		isActive = OnScreen();
+	}
+
+	void Draw() {
+		DrawRectangle(pos.x, pos.y, width, height, YELLOW);
+	}
+};
+
 class Ship {
 	public:
 	Vector2 pos;
 	Vector2 velocity = {0, 0};
 	const Vector2 size = {50, 50};
+	float shootCooldown = 0.0f;
 	const float acceleration = 0.5f; // make it a bit fun to steer
 	const float maxSpeed = 3.0f;
 	const float friction = 0.95f;
-	const int screenWidth;
-	const int screenHeight;
 
-	Ship(const Vector2 screenSize) : screenWidth(static_cast<int>(screenSize.x)), screenHeight(static_cast<int>(screenSize.y)) {
+	Ship() {
 		pos = { (screenWidth - size.x) / 2.0f, (screenHeight - size.y) / 2.0f };
 	}
 
 	void Update(float dt) {
 		// screen warp on x
 		// not equal or youll constantly jump on the edge
-		if (pos.x + size.x < 0.0f) pos.x = screenWidth - size.x;
+		if (pos.x< 0.0f) pos.x = screenWidth;
 		if (pos.x > screenWidth) pos.x = 0.0f;
 
 		// block exiting the screen on y and bounce off
@@ -54,6 +92,8 @@ class Ship {
 
 		velocity.x *= friction;
 		velocity.y *= friction;
+
+		if (shootCooldown > 0.0f) shootCooldown -= dt;
 	}
 
 	void Draw() {
@@ -68,28 +108,49 @@ class Ship {
 class Game {
 	public:
 	Ship ship;
+	Bullet bullets[50];
 
-	Game(const Vector2 screenSize) : ship(screenSize) {
-
+	int GetFreeBullet() {
+		for (int i = 0; i < 100; i++) {
+			if (!bullets[i].isActive) return i;
+		}
+		// fallback: return the first bullet
+		return 0;
 	}
 
 	void Update() {
-		ship.Update(GetFrameTime());
+		float dt = GetFrameTime();
+		ship.Update(dt);
+		
+		for (auto& bullet : bullets) {
+			if (bullet.isActive) {
+				bullet.Update();
+			}
+		}
+
+		if (IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			if (ship.shootCooldown <= 0.0f) {
+				bullets[GetFreeBullet()].ActivateBullet({ship.pos.x + ship.size.x / 2.0f, ship.pos.y - 10}, ship.velocity.x);
+				ship.shootCooldown = 0.15f;
+			}
+		}
 	}
 
 	void Draw() {
 		ship.Draw();
+		for (auto& bullet : bullets) {
+			if (bullet.isActive) {
+				bullet.Draw();
+			}
+		}
 	}
 };
 
 int main() {
-	const int screenWidth = 800;
-	const int screenHeight = 800;
-
 	InitWindow(screenWidth, screenHeight, "asteroid game");
 	SetTargetFPS(60);
 
-	Game game({screenWidth, screenHeight});
+	Game game;
 
 	while (!WindowShouldClose()) {
 		
