@@ -10,15 +10,15 @@ Window::~Window() {
 	CloseWindow();
 }
 
-bool Window::ShouldClose() {
+bool Window::ShouldClose() const {
 	return WindowShouldClose();
 }
 
-void Window::StartFrame() {
+void Window::StartFrame() const {
 	BeginDrawing();
 	ClearBackground(BLACK);
 }
 
-void Window::EndFrame() {
+void Window::EndFrame() const {
 	EndDrawing();
 }

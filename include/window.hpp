@@ -6,9 +6,9 @@ class Window {
 	
 	~Window();
 
-	bool ShouldClose();
+	bool ShouldClose() const;
 
-	void StartFrame();
+	void StartFrame() const;
 
-	void EndFrame();
+	void EndFrame() const;
 };
